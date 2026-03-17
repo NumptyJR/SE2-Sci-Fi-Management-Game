@@ -19,7 +19,7 @@ DROP TABLE IF EXISTS corporation CASCADE;
 DROP TABLE IF EXISTS race CASCADE;
 DROP TABLE IF EXISTS game_session CASCADE;
 -- ==============================================================================
--- 1. STATIC CONFIGURATION TABLES
+-- STATIC CONFIGURATION TABLES
 -- ==============================================================================
 CREATE TABLE race (
     id SERIAL PRIMARY KEY,
@@ -78,7 +78,7 @@ CREATE TABLE event_option (
     effect_planet_chaos INT DEFAULT 0
 );
 -- ==============================================================================
--- 2. DYNAMIC STATE TABLES
+-- DYNAMIC STATE TABLES
 -- ==============================================================================
 -- Represents a single playthrough of the game.
 CREATE TABLE game_session (
@@ -149,7 +149,7 @@ CREATE TABLE game_turn_history (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- ==============================================================================
--- 3. SEED DATA
+-- SEED DATA
 -- ==============================================================================
 -- Seed Races
 INSERT INTO race (name, description)
