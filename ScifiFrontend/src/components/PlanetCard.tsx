@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { ChevronRight, User } from "lucide-react"
-import type { Planet } from "@/data/planets"
+//import type { Planet } from "@/data/planets"
 import { useGame } from "@/contexts/GameContext"
 
 interface PlanetCardProps {

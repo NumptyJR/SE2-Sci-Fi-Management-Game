@@ -2,11 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useGame } from "@/contexts/GameContext"
 import { CreditCard, TrendingUp, Shield, AlertTriangle, Radio, Crosshair } from "lucide-react"
-import { stations } from "@/data/planets"
+//import { stations } from "@/data/planets"
 
 export function StatsSidebar() {
   const { state } = useGame()
   const { credits, economy, military, civilUnrest} = state
+  //temp fix
+  const stations: any[] = []
 
   return (
     <aside className="w-64 shrink-0 flex flex-col gap-4">
