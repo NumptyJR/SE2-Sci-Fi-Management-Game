@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Globe, MapPin, AlertCircle } from "lucide-react"
+import { useCommandLog } from "@/contexts/CommandLogContext"
+import { useGame } from "@/contexts/GameContext"
 
 type ChoiceEffects = {
   economy: number
@@ -29,9 +31,13 @@ type GameEvent = {
 
 export function SystemOutlook() {
   console.log("SystemOutlook mounted")
+  const { state } = useGame()
+  const { turn } = state
+
   const [events, setEvents] = useState<GameEvent[]>([])
   const [selectedEvent, setSelectedEvent] = useState<GameEvent | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const { addEntry } = useCommandLog()
 
   const openEvent = (event: GameEvent) => {
     setSelectedEvent(event)
@@ -39,8 +45,11 @@ export function SystemOutlook() {
   }
 
   useEffect(() => {
+    if (turn <= 0) return
+
     async function loadEvent() {
       try {
+        // Only load a (new) incoming event when a new turn begins.
         const res = await fetch("/api/game/event")
 
         if (!res.ok) {
@@ -51,15 +60,16 @@ export function SystemOutlook() {
 
         console.log("Event received from backend:", data)
 
-        // ScifiBackend returns a single event
         setEvents([data])
+        setSelectedEvent(null)
+        setModalOpen(false)
       } catch (err) {
         console.error("Event fetch failed:", err)
       }
     }
 
     loadEvent()
-  }, [])
+  }, [turn])
 
   const sendChoice = async (choiceId: number) => {
     try {
@@ -75,6 +85,26 @@ export function SystemOutlook() {
     } catch (err) {
       console.error("Choice submission failed:", err)
     }
+  }
+
+  const handleChoice = async (payload: { choiceId: number; choiceText: string }) => {
+    if (!selectedEvent) return
+
+    // Immediately hide the incoming event until the next turn.
+    const eventForLog = selectedEvent
+    setEvents([])
+    setSelectedEvent(null)
+    setModalOpen(false)
+
+    const shortDesc =
+      eventForLog.description.length > 90
+        ? `${eventForLog.description.slice(0, 87)}...`
+        : eventForLog.description
+
+    addEntry(
+      `System event: ${eventForLog.title} - ${shortDesc} | Choice: ${payload.choiceText}`,
+    )
+    await sendChoice(payload.choiceId)
   }
 
   return (
@@ -151,7 +181,7 @@ export function SystemOutlook() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         event={selectedEvent}
-        onChoice={(i) => sendChoice(i)}
+        onChoice={(payload) => handleChoice(payload)}
       />
     </>
   )

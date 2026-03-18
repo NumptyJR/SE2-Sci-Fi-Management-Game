@@ -29,7 +29,7 @@ interface EventModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   event: GameEvent | null
-  onChoice?: (choiceIndex: number) => void
+  onChoice?: (payload: { choiceId: number; choiceText: string }) => void
 }
 
 export function EventModal({ open, onOpenChange, event, onChoice }: EventModalProps) {
@@ -65,32 +65,31 @@ export function EventModal({ open, onOpenChange, event, onChoice }: EventModalPr
           </p>
 
           <ul className="space-y-2">
-            {event.choices.map((choice, i) => (
+            {event.choices.map((choice) => (
               <li key={choice.id}>
                 <Button
                   variant="outline"
                   className="w-full justify-start h-auto py-3 px-4 text-left border-cyan-500/30 hover:bg-cyan-500/10"
                   onClick={() => {
-                    onChoice?.(i)
+                    onChoice?.({ choiceId: choice.id, choiceText: choice.text })
                     onOpenChange(false)
                   }}
                 >
                   <span className="flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="font-medium text-cyan-100 flex-1">
+                        {choice.text}
+                      </div>
 
-                    {/* Choice Title */}
-                    <div className="font-medium text-cyan-100">
                       {choice.cost !== undefined && choice.cost > 0 && (
-                        <span className="inline-flex items-center gap-1 text-amber-400 mr-2">
+                        <span className="inline-flex items-center gap-1 text-amber-400 shrink-0">
                           <CreditCard className="h-4 w-4" />
                           {choice.cost} Cr
                         </span>
                       )}
-
-                      {choice.text}
                     </div>
 
-                    {/* Effects */}
-                    <div className="text-xs mt-1 flex gap-3 flex-wrap">
+                    <div className="text-xs mt-2 flex gap-3 flex-wrap">
 
                       {choice.effects.economy !== 0 && (
                         <span
