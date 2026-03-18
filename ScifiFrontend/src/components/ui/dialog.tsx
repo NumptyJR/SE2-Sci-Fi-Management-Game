@@ -1,4 +1,5 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -17,7 +18,7 @@ const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={() => onOpenChange(false)}
@@ -29,7 +30,8 @@ const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

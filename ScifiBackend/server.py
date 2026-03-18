@@ -1,10 +1,8 @@
 from flask import Flask, jsonify, request
-from flask_cors import CORS
 import gameLoop
 from memento import caretaker
 
 app = Flask(__name__)
-CORS(app)
 
 game_state = {
     "turn": 0,
