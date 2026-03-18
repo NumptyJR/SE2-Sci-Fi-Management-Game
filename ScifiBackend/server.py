@@ -1,7 +1,10 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import gameLoop
+from memento import caretaker
 
 app = Flask(__name__)
+CORS(app)
 
 game_state = {
     "turn": 0,
@@ -123,6 +126,48 @@ def advance_turn():
         "started": True,
         "resources": gameLoop.gameState["resources"]
     })
+
+
+# Save / Load endpoints (Memento pattern)
+
+@app.route("/api/game/saves", methods=["GET"])
+def list_saves():
+    """Return metadata for all saved games, newest first."""
+    return jsonify(caretaker.list_saves())
+
+
+@app.route("/api/game/save", methods=["POST"])
+def save_game():
+    """Create a new save from the current game state."""
+    data = request.get_json() or {}
+    save_name = data.get("save_name", f"Turn {currentTurn} Save")
+    result = gameLoop.save_game(save_name)
+    return jsonify(result), 201
+
+
+@app.route("/api/game/load/<save_id>", methods=["POST"])
+def load_game(save_id):
+    """Restore game state from a saved memento."""
+    global currentTurn, gameStarted
+    try:
+        result = gameLoop.load_game(save_id)
+        currentTurn = result["turn"]
+        gameStarted = True
+        gameLoop.generate_event()
+        return jsonify({
+            "turn": currentTurn,
+            "started": True,
+            "resources": result["resources"],
+        })
+    except KeyError as e:
+        return jsonify({"error": str(e)}), 404
+
+
+@app.route("/api/game/save/<save_id>", methods=["DELETE"])
+def delete_save(save_id):
+    """Delete a saved game."""
+    caretaker.delete(save_id)
+    return jsonify({"deleted": save_id})
 
 
 if __name__ == "__main__":

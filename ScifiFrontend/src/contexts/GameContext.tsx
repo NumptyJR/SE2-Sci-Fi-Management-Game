@@ -15,6 +15,13 @@ export interface GameState {
   planetGovernors: Record<string, string>
 }
 
+export interface SaveInfo {
+  save_id: string
+  save_name: string
+  timestamp: string
+  turn: number
+}
+
 interface ApiResources {
   ration: number
   mineral: number
@@ -62,6 +69,10 @@ type GameContextValue = {
   advanceTurn: () => Promise<void>
   resetGame: () => void
   refreshGame: () => Promise<void>
+  saveGame: (saveName: string) => Promise<SaveInfo>
+  loadGame: (saveId: string) => Promise<void>
+  getSaves: () => Promise<SaveInfo[]>
+  deleteSave: (saveId: string) => Promise<void>
 }
 
 const GameContext = createContext<GameContextValue | null>(null)
@@ -132,6 +143,47 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setGameStarted(false)
   }, [])
 
+  const saveGame = useCallback(async (saveName: string): Promise<SaveInfo> => {
+    const res = await fetch(`${API}/game/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ save_name: saveName }),
+    })
+    if (!res.ok) throw new Error("Failed to save game")
+    return res.json() as Promise<SaveInfo>
+  }, [])
+
+  const loadGame = useCallback(async (saveId: string): Promise<void> => {
+    const res = await fetch(`${API}/game/load/${saveId}`, { method: "POST" })
+    if (!res.ok) throw new Error("Failed to load game")
+    const data = (await res.json()) as ApiGame
+    setGameStarted(true)
+    setState((s) => ({
+      ...s,
+      turn: data.turn,
+      ...(data.resources && {
+        resources: {
+          rations: data.resources.ration,
+          minerals: data.resources.mineral,
+          fuel: data.resources.fuel,
+          manufactured: data.resources.manufacture,
+          medical: data.resources.medical,
+        },
+      }),
+    }))
+  }, [])
+
+  const getSaves = useCallback(async (): Promise<SaveInfo[]> => {
+    const res = await fetch(`${API}/game/saves`)
+    if (!res.ok) throw new Error("Failed to fetch saves")
+    return res.json() as Promise<SaveInfo[]>
+  }, [])
+
+  const deleteSave = useCallback(async (saveId: string): Promise<void> => {
+    const res = await fetch(`${API}/game/save/${saveId}`, { method: "DELETE" })
+    if (!res.ok) throw new Error("Failed to delete save")
+  }, [])
+
   return (
     <GameContext.Provider
       value={{
@@ -143,6 +195,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         advanceTurn,
         resetGame,
         refreshGame,
+        saveGame,
+        loadGame,
+        getSaves,
+        deleteSave,
       }}
     >
       {children}

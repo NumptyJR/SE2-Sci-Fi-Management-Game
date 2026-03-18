@@ -1,6 +1,7 @@
 import random
 from events import eventList
 from planets import planetList
+from memento import GameMemento, caretaker
 
 gameState = {
     "turn": 0,
@@ -105,3 +106,55 @@ def apply_choice(choice_id):
 def advance_turn():
     gameState["turn"] += 1
     collect_resources()
+
+
+# Memento pattern: Originator methods 
+
+def save_game(save_name: str) -> dict:
+    """
+    Originator: capture the current game state into a GameMemento
+    and hand it to the Caretaker for storage.
+    """
+    planets_state = [
+        {
+            "name": p.name,
+            "ecomStat": p.ecomStat,
+            "militaryStat": p.militaryStat,
+            "unrestStat": p.unrestStat,
+        }
+        for p in planetList
+    ]
+    memento = GameMemento(save_name, gameState, gameState["turn"], planets_state)
+    caretaker.save(memento)
+    return {
+        "save_id": memento.save_id,
+        "save_name": memento.save_name,
+        "timestamp": memento.timestamp,
+    }
+
+
+def load_game(save_id: str) -> dict:
+    """
+    Originator: ask the Caretaker for a memento and restore state from it.
+    Returns the restored turn number so server.py can sync its own counter.
+    """
+    memento = caretaker.restore(save_id)
+    restored = memento.get_state()
+
+    # Restore global game state dict in-place
+    gameState.clear()
+    gameState.update(restored["game_state"])
+
+    # Restore per-planet stats
+    planet_map = {p.name: p for p in planetList}
+    for ps in restored["planets_state"]:
+        planet = planet_map.get(ps["name"])
+        if planet:
+            planet.ecomStat = ps["ecomStat"]
+            planet.militaryStat = ps["militaryStat"]
+            planet.unrestStat = ps["unrestStat"]
+
+    return {
+        "turn": restored["current_turn"],
+        "resources": gameState["resources"],
+    }

@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { LayoutDashboard, Globe, Orbit, BookOpen } from "lucide-react"
 import { useGame } from "@/contexts/GameContext"
+import { SaveLoadModal } from "@/components/SaveLoadModal"
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -33,6 +34,7 @@ export function Header() {
                 Turn {state.turn} / 15
               </div>
             )}
+            {!isTitleScreen && <SaveLoadModal />}
             {!isTitleScreen && (
               <nav className="flex items-center gap-1">
                 {navItems.map(({ path, label, icon: Icon }) => (
