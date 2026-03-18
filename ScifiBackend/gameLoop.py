@@ -25,17 +25,9 @@ def start_game():
 
 def collect_resources():
     for planet in planetList:
-        match planet.resource:
-            case "ration":
-                gameState["resources"]["ration"] += planet.leader.resourceYield
-            case "mineral":
-                gameState["resources"]["mineral"] += planet.leader.resourceYield
-            case "fuel":
-                gameState["resources"]["fuel"] += planet.leader.resourceYield
-            case "manufacture":
-                gameState["resources"]["manufacture"] += planet.leader.resourceYield
-            case "medical":
-                gameState["resources"]["medical"] += planet.leader.resourceYield
+        resource = planet.resource
+        if resource in gameState["resources"]:
+            gameState["resources"][resource] += planet.leader.resourceYield
 
 
 def format_choice(choice, cid):

@@ -94,6 +94,20 @@ def get_codex():
     ])
 
 
+@app.route("/api/game/choice", methods=["POST"])
+def make_choice():
+    data = request.get_json()
+    choice_id = data.get("choice")
+
+    result = gameLoop.apply_choice(choice_id)
+    resources = gameLoop.gameState["resources"]
+
+    return jsonify({
+        "planet": result,
+        "resources": resources
+    })
+
+
 @app.route("/api/game/advance", methods=["POST"])
 def advance_turn():
     global currentTurn
@@ -106,7 +120,8 @@ def advance_turn():
 
     return jsonify({
         "turn": currentTurn,
-        "started": True
+        "started": True,
+        "resources": gameLoop.gameState["resources"]
     })
 
 

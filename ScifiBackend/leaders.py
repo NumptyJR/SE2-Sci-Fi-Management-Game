@@ -8,4 +8,4 @@ leaderList.append(leader1)
 #Append to main list after initialization
 
 leader2 = Leader("Leader2", "description", 3)
-leaderList.append(leader1)
+leaderList.append(leader2)
