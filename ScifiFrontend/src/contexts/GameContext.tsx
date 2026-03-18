@@ -15,9 +15,18 @@ export interface GameState {
   planetGovernors: Record<string, string>
 }
 
+interface ApiResources {
+  ration: number
+  mineral: number
+  fuel: number
+  manufacture: number
+  medical: number
+}
+
 interface ApiGame {
   turn: number
   started: boolean
+  resources?: ApiResources
 }
 
 const defaultState: GameState = {
@@ -100,7 +109,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${API}/game/advance`, { method: "POST" })
       if (!res.ok) return
       const data = (await res.json()) as ApiGame
-      setState((s) => ({ ...s, turn: data.turn }))
+      setState((s) => ({
+        ...s,
+        turn: data.turn,
+        ...(data.resources && {
+          resources: {
+            rations: data.resources.ration,
+            minerals: data.resources.mineral,
+            fuel: data.resources.fuel,
+            manufactured: data.resources.manufacture,
+            medical: data.resources.medical,
+          },
+        }),
+      }))
     } catch {
       // ignore
     }

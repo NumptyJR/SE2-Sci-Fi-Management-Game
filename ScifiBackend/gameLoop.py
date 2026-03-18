@@ -25,8 +25,9 @@ def start_game():
 
 def collect_resources():
     for planet in planetList:
-        if planet.resource in gameState["resources"]:
-            gameState["resources"][planet.resource] += planet.leader.resourceYield
+        resource = planet.resource
+        if resource in gameState["resources"]:
+            gameState["resources"][resource] += planet.leader.resourceYield
 
 
 def format_choice(choice, cid):
