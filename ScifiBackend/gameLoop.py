@@ -2,6 +2,15 @@ import random
 from events import eventList
 from planets import planetList
 from memento import GameMemento, caretaker
+from command import ApplyChoiceCommand, CommandHistory
+from observer import AlertObserver, StatChangeLogObserver
+
+# Command pattern: shared history of all player decisions
+command_history = CommandHistory()
+
+# Observer pattern: shared observers attached to every planet
+alert_observer = AlertObserver()
+stat_log_observer = StatChangeLogObserver()
 
 gameState = {
     "turn": 0,
@@ -20,6 +29,10 @@ currentPlanet = None
 
 
 def start_game():
+    # Observer pattern: attach observers to every planet once at game start
+    for planet in planetList:
+        planet.attach(alert_observer)
+        planet.attach(stat_log_observer)
     gameState["turn"] = 1
     return gameState
 
@@ -91,9 +104,9 @@ def apply_choice(choice_id):
     else:
         choice = currentEvent.c3
 
-    currentPlanet.ecomStat += choice.ecomEffect
-    currentPlanet.militaryStat += choice.militaryEffect
-    currentPlanet.unrestStat += choice.unrestEffect
+    # Command pattern: wrap the action so it can be undone and inspected
+    cmd = ApplyChoiceCommand(currentPlanet, choice, currentEvent.name)
+    command_history.execute(cmd)
 
     return {
         "planet": currentPlanet.name,
@@ -101,6 +114,32 @@ def apply_choice(choice_id):
         "military": currentPlanet.militaryStat,
         "unrest": currentPlanet.unrestStat
     }
+
+
+def undo_last_choice() -> dict:
+    """Undo the most recent player choice and return the updated planet stats."""
+    cmd = command_history.undo_last()
+    undone = cmd.to_dict()
+    planet = next(p for p in planetList if p.name == undone["planet"])
+    return {
+        "undone": undone,
+        "planet": planet.name,
+        "economy": planet.ecomStat,
+        "military": planet.militaryStat,
+        "unrest": planet.unrestStat,
+    }
+
+
+def get_command_history() -> list:
+    return command_history.get_history()
+
+
+def get_alerts() -> list:
+    return alert_observer.get_alerts()
+
+
+def clear_alerts():
+    alert_observer.clear_alerts()
 
 
 def advance_turn():
@@ -153,6 +192,13 @@ def load_game(save_id: str) -> dict:
             planet.ecomStat = ps["ecomStat"]
             planet.militaryStat = ps["militaryStat"]
             planet.unrestStat = ps["unrestStat"]
+
+    # Command pattern: clear history — loaded state is the new baseline
+    command_history.clear()
+
+    # Observer pattern: reset alerts to reflect the restored state
+    alert_observer.clear_alerts()
+    stat_log_observer.clear()
 
     return {
         "turn": restored["current_turn"],

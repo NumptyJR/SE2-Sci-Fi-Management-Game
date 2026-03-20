@@ -1,17 +1,41 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useGame } from "@/contexts/GameContext"
-import { CreditCard, TrendingUp, Shield, AlertTriangle, Radio, Crosshair } from "lucide-react"
+import { CreditCard, TrendingUp, Shield, AlertTriangle, Radio, Crosshair, X } from "lucide-react"
 //import { stations } from "@/data/planets"
 
 export function StatsSidebar() {
-  const { state } = useGame()
+  const { state, alerts, dismissAlerts } = useGame()
   const { credits, economy, military, civilUnrest} = state
   //temp fix
   const stations: any[] = []
 
   return (
     <aside className="w-64 shrink-0 flex flex-col gap-4">
+      {/* Observer pattern: critical threshold alerts */}
+      {alerts.length > 0 && (
+        <Card className="border-red-500/50 bg-red-950/40">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-display tracking-wider text-red-400 flex items-center gap-1">
+              <AlertTriangle className="h-3.5 w-3.5" /> ALERTS
+            </CardTitle>
+            <button
+              onClick={dismissAlerts}
+              className="text-red-400 hover:text-red-300 transition-colors"
+              aria-label="Dismiss alerts"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {alerts.map((alert, i) => (
+              <p key={i} className="text-xs text-red-300 font-mono leading-relaxed">
+                {alert.message}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       {/* System Status */}
       <Card className="border-cyan-500/20 bg-card/90">
         <CardHeader className="pb-2">

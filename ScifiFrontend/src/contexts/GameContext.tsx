@@ -22,6 +22,21 @@ export interface SaveInfo {
   turn: number
 }
 
+export interface UndoResult {
+  undone: { event: string; choice: string; planet: string; effects: { economy: number; military: number; unrest: number } }
+  planet: string
+  economy: number
+  military: number
+  unrest: number
+}
+
+export interface Alert {
+  planet: string
+  stat: string
+  level: string
+  message: string
+}
+
 interface ApiResources {
   ration: number
   mineral: number
@@ -73,6 +88,11 @@ type GameContextValue = {
   loadGame: (saveId: string) => Promise<void>
   getSaves: () => Promise<SaveInfo[]>
   deleteSave: (saveId: string) => Promise<void>
+  // Observer pattern
+  alerts: Alert[]
+  dismissAlerts: () => Promise<void>
+  // Command pattern
+  undoLastChoice: () => Promise<UndoResult>
 }
 
 const GameContext = createContext<GameContextValue | null>(null)
@@ -87,6 +107,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GameState>(defaultState)
   const [gameStarted, setGameStarted] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
+  const [alerts, setAlerts] = useState<Alert[]>([])
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/game/alerts`)
+      if (!res.ok) return
+      setAlerts(await res.json())
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const dismissAlerts = useCallback(async () => {
+    await fetch(`${API}/game/alerts`, { method: "DELETE" })
+    setAlerts([])
+  }, [])
+
+  const undoLastChoice = useCallback(async () => {
+    const res = await fetch(`${API}/game/undo`, { method: "POST" })
+    if (!res.ok) throw new Error("Nothing to undo.")
+    const data = await res.json()
+    await fetchAlerts()
+    return data
+  }, [fetchAlerts])
 
   const refreshGame = useCallback(async () => {
     try {
@@ -133,10 +177,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
           },
         }),
       }))
+      await fetchAlerts()
     } catch {
       // ignore
     }
-  }, [])
+  }, [fetchAlerts])
 
   const resetGame = useCallback(() => {
     setState({ ...defaultState })
@@ -171,6 +216,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         },
       }),
     }))
+    setAlerts([])
   }, [])
 
   const getSaves = useCallback(async (): Promise<SaveInfo[]> => {
@@ -199,6 +245,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         loadGame,
         getSaves,
         deleteSave,
+        alerts,
+        dismissAlerts,
+        undoLastChoice,
       }}
     >
       {children}

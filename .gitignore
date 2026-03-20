@@ -30,3 +30,4 @@ env/
 *.out
 *.o
 .coverage
+UML_Diagrams.md

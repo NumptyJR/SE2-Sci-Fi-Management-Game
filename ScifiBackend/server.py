@@ -126,6 +126,39 @@ def advance_turn():
     })
 
 
+# Command pattern endpoints
+
+@app.route("/api/game/history", methods=["GET"])
+def get_history():
+    """Return the list of all player choices made this session, oldest first."""
+    return jsonify(gameLoop.get_command_history())
+
+
+@app.route("/api/game/undo", methods=["POST"])
+def undo_choice():
+    """Undo the most recent player choice."""
+    try:
+        result = gameLoop.undo_last_choice()
+        return jsonify(result)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# Observer pattern endpoints
+
+@app.route("/api/game/alerts", methods=["GET"])
+def get_alerts():
+    """Return all active threshold alerts (critical economy, military, or unrest)."""
+    return jsonify(gameLoop.get_alerts())
+
+
+@app.route("/api/game/alerts", methods=["DELETE"])
+def clear_alerts():
+    """Dismiss all current alerts."""
+    gameLoop.clear_alerts()
+    return jsonify({"cleared": True})
+
+
 # Save / Load endpoints (Memento pattern)
 
 @app.route("/api/game/saves", methods=["GET"])
