@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 class Command(ABC):
     """
     Command pattern — abstract command interface.
-    Every player action that modifies game state should implement this.
     """
 
     @abstractmethod

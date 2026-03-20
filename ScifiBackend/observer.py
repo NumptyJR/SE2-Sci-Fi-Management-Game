@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 class PlanetObserver(ABC):
     """
     Observer pattern — abstract subscriber interface.
-    Implement this to react to planet stat changes.
     """
 
     @abstractmethod

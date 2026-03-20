@@ -9,7 +9,6 @@ SAVES_FILE = os.path.join(os.path.dirname(__file__), "saves.json")
 class GameMemento:
     """
     Memento pattern — stores an immutable snapshot of the full game state.
-    Only GameCaretaker and gameLoop should interact with this class.
     """
 
     def __init__(self, save_name: str, game_state: dict, current_turn: int, planets_state: list):
