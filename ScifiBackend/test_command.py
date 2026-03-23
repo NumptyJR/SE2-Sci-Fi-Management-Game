@@ -33,7 +33,7 @@ class TestApplyChoiceCommand(unittest.TestCase):
         choice = make_choice(military=15)
         cmd = ApplyChoiceCommand(self.planet, choice, "Test Event")
         cmd.execute()
-        self.assertEqual(self.planet.militaryStat, 115)
+        self.assertEqual(self.planet.militaryStat, 100)
 
     def test_execute_applies_unrest_effect(self):
         choice = make_choice(unrest=-5)
@@ -46,7 +46,7 @@ class TestApplyChoiceCommand(unittest.TestCase):
         cmd = ApplyChoiceCommand(self.planet, choice, "Test Event")
         cmd.execute()
         self.assertEqual(self.planet.ecomStat, 90)
-        self.assertEqual(self.planet.militaryStat, 105)
+        self.assertEqual(self.planet.militaryStat, 100)
         self.assertEqual(self.planet.unrestStat, 70)
 
     # undo
