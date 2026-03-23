@@ -1,5 +1,5 @@
 class Event(object):
-    #Initializer 
+    #Initializer
     def __init__(self, name, description, c1, c2, c3):
         self.name = name
         self.description = description
@@ -8,7 +8,7 @@ class Event(object):
         self.c3 = c3
 
 class Choice(object):
-    #Initializer 
+    #Initializer
     def __init__(self, cName, cDescription, resourceCost, ecomEffect, militaryEffect, unrestEffect):
         self.cName = cName
         self.cDescription = cDescription
@@ -42,7 +42,8 @@ class Planet(object):
         for observer in self._observers:
             observer.on_stat_change(self.name, stat, old_value, new_value)
 
-    # Properties
+    # Properties — all values are clamped to [0, 100] to prevent
+    # runaway stats from producing nonsensical negative or over-cap numbers.
 
     @property
     def ecomStat(self):
@@ -51,8 +52,8 @@ class Planet(object):
     @ecomStat.setter
     def ecomStat(self, value):
         old = self._ecomStat
-        self._ecomStat = value
-        self._notify("ecomStat", old, value)
+        self._ecomStat = max(0, min(100, value))
+        self._notify("ecomStat", old, self._ecomStat)
 
     @property
     def militaryStat(self):
@@ -61,8 +62,8 @@ class Planet(object):
     @militaryStat.setter
     def militaryStat(self, value):
         old = self._militaryStat
-        self._militaryStat = value
-        self._notify("militaryStat", old, value)
+        self._militaryStat = max(0, min(100, value))
+        self._notify("militaryStat", old, self._militaryStat)
 
     @property
     def unrestStat(self):
@@ -71,8 +72,8 @@ class Planet(object):
     @unrestStat.setter
     def unrestStat(self, value):
         old = self._unrestStat
-        self._unrestStat = value
-        self._notify("unrestStat", old, value)
+        self._unrestStat = max(0, min(100, value))
+        self._notify("unrestStat", old, self._unrestStat)
 
 class Leader(object):
     #Initializer 

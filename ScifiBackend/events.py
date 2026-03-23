@@ -14,11 +14,11 @@ event1 = Event("Astroid Shower",
 eventList.append(event1)
 #Append to main list after initialization
 
-event2 = Event("EndTestEvent",
-      "TestDescription",
-      Choice("choice1", "test", -1,-100,0,0),
-      Choice("choice2", "test", -2,-100,1,-2),
-      Choice("choice3", "test", -3,-100,0,1)
+event2 = Event("Monolith Appeared",
+      "An Alien Monolith Has Appeared in the Sky Without Warning",
+      Choice("Military Response", "test", -25,-15,20,-20),
+      Choice("Send in Research Team", "test", -15,-10,0,-16),
+      Choice("Welcome the Visitor", "test", 0,-10,-30,30)
       )
 eventList.append(event2)
 

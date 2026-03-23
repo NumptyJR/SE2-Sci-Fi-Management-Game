@@ -30,8 +30,7 @@ type GameEvent = {
 }
 
 export function SystemOutlook() {
-  console.log("SystemOutlook mounted")
-  const { state } = useGame()
+  const { state, applyChoice } = useGame()
   const { turn } = state
 
   const [events, setEvents] = useState<GameEvent[]>([])
@@ -49,17 +48,9 @@ export function SystemOutlook() {
 
     async function loadEvent() {
       try {
-        // Only load a (new) incoming event when a new turn begins.
         const res = await fetch("/api/game/event")
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch event")
-        }
-
+        if (!res.ok) throw new Error("Failed to fetch event")
         const data = await res.json()
-
-        console.log("Event received from backend:", data)
-
         setEvents([data])
         setSelectedEvent(null)
         setModalOpen(false)
@@ -71,26 +62,10 @@ export function SystemOutlook() {
     loadEvent()
   }, [turn])
 
-  const sendChoice = async (choiceId: number) => {
-    try {
-      await fetch("/api/game/choice", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ choice: choiceId }),
-      })
-
-      console.log("Choice sent:", choiceId)
-    } catch (err) {
-      console.error("Choice submission failed:", err)
-    }
-  }
-
   const handleChoice = async (payload: { choiceId: number; choiceText: string }) => {
     if (!selectedEvent) return
 
-    // Immediately hide the incoming event until the next turn.
+    // Immediately clear the event card so it feels responsive
     const eventForLog = selectedEvent
     setEvents([])
     setSelectedEvent(null)
@@ -102,9 +77,12 @@ export function SystemOutlook() {
         : eventForLog.description
 
     addEntry(
-      `System event: ${eventForLog.title} - ${shortDesc} | Choice: ${payload.choiceText}`,
+      `System event: ${eventForLog.title} — ${shortDesc} | Choice: ${payload.choiceText}`,
     )
-    await sendChoice(payload.choiceId)
+
+    // applyChoice hits the backend AND updates GameContext state (economy,
+    // military, unrest, resources) in one call — no separate fetch needed
+    await applyChoice(payload.choiceId)
   }
 
   return (
@@ -126,7 +104,7 @@ export function SystemOutlook() {
 
         {events.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No events in the system.
+            No events in the system. Advance the turn to receive your next directive.
           </p>
         )}
 
@@ -142,7 +120,6 @@ export function SystemOutlook() {
                   <CardTitle className="text-lg text-cyan-100">
                     {ev.title}
                   </CardTitle>
-
                   <Badge
                     variant="outline"
                     className="text-muted-foreground font-mono shrink-0"
@@ -150,7 +127,6 @@ export function SystemOutlook() {
                     {ev.category}
                   </Badge>
                 </div>
-
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4" />
                   <span>{ev.location}</span>
@@ -161,12 +137,11 @@ export function SystemOutlook() {
                 <p className="text-sm text-muted-foreground line-clamp-2">
                   {ev.description}
                 </p>
-
                 <Button
                   variant="ghost"
                   size="sm"
                   className="mt-2 text-secondary"
-                  onClick={() => openEvent(ev)}
+                  onClick={(e) => { e.stopPropagation(); openEvent(ev) }}
                 >
                   <AlertCircle className="h-4 w-4 mr-1" />
                   View choices

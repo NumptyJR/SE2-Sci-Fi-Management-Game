@@ -1,17 +1,16 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-//import type { Planet } from "@/data/planets"
-import { useGame } from "@/contexts/GameContext"
 import { User } from "lucide-react"
 
 type Leader = {
-    name: string
-    resourceYield: number
+  name: string
+  resourceYield: number
 }
 
 type Planet = {
   id: string
   name: string
+  description: string
   primaryOutput: string
   economy: number
   military: number
@@ -26,15 +25,12 @@ interface PlanetDetailModalProps {
 }
 
 export function PlanetDetailModal({ open, onOpenChange, planet }: PlanetDetailModalProps) {
-  const { state } = useGame()
   if (!planet) return null
 
-  const chaos = state.planetChaos[planet.id] ?? planet.unrest ?? 0
-  const governorName = state.planetGovernors[planet.id] ?? planet.leader?.name ?? "—"
-
+  const unrest = planet.unrest ?? 0
   const variant =
-    chaos >= 70 ? "danger" :
-    chaos >= 50 ? "warning" :
+    unrest >= 70 ? "danger" :
+    unrest >= 50 ? "warning" :
     "default"
 
   return (
@@ -44,70 +40,53 @@ export function PlanetDetailModal({ open, onOpenChange, planet }: PlanetDetailMo
           <DialogTitle className="text-cyan-100">
             {planet.name}
           </DialogTitle>
-
           <p className="text-sm text-muted-foreground">
-            {planet.type ?? "Colony"} · {planet.primaryOutput}
+            Colony · {planet.primaryOutput}
           </p>
         </DialogHeader>
 
         <div className="space-y-4">
 
-          {/* Chaos / Stability */}
+          {/* Unrest meter */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1">
-              Chaos meter
-            </p>
-            <Progress value={chaos} variant={variant} className="h-3" />
-            <p className="text-xs text-muted-foreground mt-1">
-              Governor: {governorName}
-            </p>
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>Unrest</span>
+              <span>{unrest}</span>
+            </div>
+            <Progress value={unrest} variant={variant} className="h-3" />
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">Economy</p>
-              <p className="text-green-400 font-mono">{planet.economy}</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Economy</p>
+              <p className="text-lg font-mono font-bold text-green-400">{planet.economy}</p>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Military</p>
-              <p className="text-cyan-400 font-mono">{planet.military}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Military</p>
+              <p className="text-lg font-mono font-bold text-cyan-400">{planet.military}</p>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Unrest</p>
-              <p className="text-amber-400 font-mono">{planet.unrest}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Unrest</p>
+              <p className="text-lg font-mono font-bold text-amber-400">{planet.unrest}</p>
             </div>
           </div>
 
           {/* Description */}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             {planet.description ?? "No description available."}
           </p>
 
-          {/* Role */}
-          <div>
-            <p className="text-xs font-medium text-cyan-200 mb-2">
-              Role
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {planet.role ?? "No defined role."}
-            </p>
-          </div>
-
-          {/* Leader */}
+          {/* Governor */}
           <div>
             <p className="text-xs font-medium text-cyan-200 mb-2 flex items-center gap-1">
               <User className="h-3.5 w-3.5" />
               Governor
             </p>
-
             <div className="flex flex-col text-sm">
-              <span className="text-cyan-100">
-                {planet.leader?.name ?? "Unknown"}
-              </span>
-
+              <span className="text-cyan-100">{planet.leader?.name ?? "Unknown"}</span>
               <span className="text-xs text-muted-foreground">
-                Resource Yield: {planet.leader?.resourceYield ?? 0}
+                Resource yield: {planet.leader?.resourceYield ?? 0} units / turn
               </span>
             </div>
           </div>

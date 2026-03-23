@@ -11,8 +11,6 @@ export interface GameState {
   civilUnrest: number
   stability: number
   resources: { rations: number; minerals: number; fuel: number; manufactured: number; medical: number }
-  planetChaos: Record<string, number>
-  planetGovernors: Record<string, string>
 }
 
 export interface SaveInfo {
@@ -37,12 +35,22 @@ export interface Alert {
   message: string
 }
 
+// Matches the backend's resource keys after the server.py fix
 interface ApiResources {
-  ration: number
-  mineral: number
+  rations: number
+  minerals: number
   fuel: number
-  manufacture: number
+  manufactured: number
   medical: number
+}
+
+// Shape of a planet returned by /api/game/planets and /api/game/choice
+interface ApiPlanet {
+  id: string
+  name: string
+  economy: number
+  military: number
+  unrest: number
 }
 
 interface ApiGame {
@@ -58,21 +66,13 @@ const defaultState: GameState = {
   military: 50,
   civilUnrest: 25,
   stability: 65,
-  resources: { rations: 20, minerals: 15, fuel: 18, manufactured: 12, medical: 14 },
-  planetChaos: {
-    nalathis: 35,
-    khm4: 42,
-    pharis: 28,
-    fol: 38,
-    pyrathis: 45,
-  },
-  planetGovernors: {
-    nalathis: "Sidis Hronar",
-    khm4: "Director Selene Myr",
-    pharis: "Chris Steffin",
-    fol: "Fori Dxylon",
-    pyrathis: "Vex-9",
-  },
+  resources: { rations: 0, minerals: 0, fuel: 0, manufactured: 0, medical: 0 },
+}
+
+// Helper: average a numeric field across all planets
+function avgStat(planets: ApiPlanet[], key: keyof Pick<ApiPlanet, "economy" | "military" | "unrest">): number {
+  if (!planets.length) return 50
+  return Math.round(planets.reduce((s, p) => s + p[key], 0) / planets.length)
 }
 
 type GameContextValue = {
@@ -82,6 +82,7 @@ type GameContextValue = {
   isStarting: boolean
   startGame: () => Promise<void>
   advanceTurn: () => Promise<void>
+  applyChoice: (choiceId: number) => Promise<void>
   resetGame: () => void
   refreshGame: () => Promise<void>
   saveGame: (saveName: string) => Promise<SaveInfo>
@@ -115,7 +116,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (!res.ok) return
       setAlerts(await res.json())
     } catch {
-      // ignore
+      // ignore network errors silently
     }
   }, [])
 
@@ -124,12 +125,36 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setAlerts([])
   }, [])
 
-  const undoLastChoice = useCallback(async () => {
+  const undoLastChoice = useCallback(async (): Promise<UndoResult> => {
     const res = await fetch(`${API}/game/undo`, { method: "POST" })
     if (!res.ok) throw new Error("Nothing to undo.")
     const data = await res.json()
     await fetchAlerts()
     return data
+  }, [fetchAlerts])
+
+  // applyChoice: sends the player's decision, then syncs all derived state
+  // from the response (planet averages → economy/military/unrest, resources)
+  const applyChoice = useCallback(async (choiceId: number): Promise<void> => {
+    const res = await fetch(`${API}/game/choice`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ choice: choiceId }),
+    })
+    if (!res.ok) throw new Error("Failed to apply choice")
+    const data = await res.json()
+
+    const planets: ApiPlanet[] = data.planets ?? []
+
+    setState((s) => ({
+      ...s,
+      resources: data.resources ?? s.resources,
+      economy: avgStat(planets, "economy"),
+      military: avgStat(planets, "military"),
+      civilUnrest: avgStat(planets, "unrest"),
+    }))
+
+    await fetchAlerts()
   }, [fetchAlerts])
 
   const refreshGame = useCallback(async () => {
@@ -153,7 +178,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (!res.ok) throw new Error("Failed to start game")
       const data = (await res.json()) as ApiGame
       setGameStarted(data.started)
-      setState((s) => ({ ...s, turn: data.turn }))
+
+      // Seed real planet stats immediately on game start
+      const planetsRes = await fetch(`${API}/game/planets`)
+      const planets: ApiPlanet[] = planetsRes.ok ? await planetsRes.json() : []
+
+      setState((s) => ({
+        ...s,
+        turn: data.turn,
+        economy: avgStat(planets, "economy"),
+        military: avgStat(planets, "military"),
+        civilUnrest: avgStat(planets, "unrest"),
+        // Reset resources to zero — backend accumulates from turn 1
+        resources: { rations: 0, minerals: 0, fuel: 0, manufactured: 0, medical: 0 },
+      }))
     } finally {
       setIsStarting(false)
     }
@@ -164,19 +202,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${API}/game/advance`, { method: "POST" })
       if (!res.ok) return
       const data = (await res.json()) as ApiGame
+
       setState((s) => ({
         ...s,
         turn: data.turn,
-        ...(data.resources && {
-          resources: {
-            rations: data.resources.ration,
-            minerals: data.resources.mineral,
-            fuel: data.resources.fuel,
-            manufactured: data.resources.manufacture,
-            medical: data.resources.medical,
-          },
-        }),
+        // Resources keys now match the backend directly — no remapping needed
+        ...(data.resources && { resources: data.resources }),
       }))
+
       await fetchAlerts()
     } catch {
       // ignore
@@ -203,19 +236,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (!res.ok) throw new Error("Failed to load game")
     const data = (await res.json()) as ApiGame
     setGameStarted(true)
+
+    // Re-fetch planets after load to get accurate economy/military/unrest
+    const planetsRes = await fetch(`${API}/game/planets`)
+    const planets: ApiPlanet[] = planetsRes.ok ? await planetsRes.json() : []
+
     setState((s) => ({
       ...s,
       turn: data.turn,
-      ...(data.resources && {
-        resources: {
-          rations: data.resources.ration,
-          minerals: data.resources.mineral,
-          fuel: data.resources.fuel,
-          manufactured: data.resources.manufacture,
-          medical: data.resources.medical,
-        },
-      }),
+      economy: avgStat(planets, "economy"),
+      military: avgStat(planets, "military"),
+      civilUnrest: avgStat(planets, "unrest"),
+      ...(data.resources && { resources: data.resources }),
     }))
+
     setAlerts([])
   }, [])
 
@@ -239,6 +273,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         isStarting,
         startGame,
         advanceTurn,
+        applyChoice,
         resetGame,
         refreshGame,
         saveGame,
