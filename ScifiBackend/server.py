@@ -112,7 +112,8 @@ def make_choice():
     return jsonify({
         "affected_planet": result,
         "planets": planets_after,
-        "resources": resources
+        "resources": resources,
+        "credits": gameLoop.gameState["credits"],
     })
 
 

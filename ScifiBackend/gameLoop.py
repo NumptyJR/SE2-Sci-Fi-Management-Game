@@ -24,6 +24,7 @@ RESOURCE_MAP = {
 gameState = {
     "turn": 0,
     "totalStat": 100,
+    "credits": 100,
     "resources": {
         "rations": 0,
         "minerals": 0,
@@ -45,6 +46,7 @@ def start_game():
         planet.attach(alert_observer)
         planet.attach(stat_log_observer)
     gameState["turn"] = 1
+    gameState["credits"] = 100
 
     # Persist a new game session to the database
     try:
@@ -133,11 +135,9 @@ def apply_choice(choice_id):
         choice = currentEvent.c2
     else:
         choice = currentEvent.c3
+    # Deduct the credit cost
     if choice.resourceCost != 0:
-        for key in gameState["resources"]:
-            gameState["resources"][key] = max(
-                0, gameState["resources"][key] + choice.resourceCost
-            )
+        gameState["credits"] = max(0, gameState["credits"] + choice.resourceCost)
 
     # Command pattern: wrap the action so it can be undone and inspected
     cmd = ApplyChoiceCommand(currentPlanet, choice, currentEvent.name)
@@ -150,7 +150,8 @@ def apply_choice(choice_id):
         "planet": currentPlanet.name,
         "economy": currentPlanet.ecomStat,
         "military": currentPlanet.militaryStat,
-        "unrest": currentPlanet.unrestStat
+        "unrest": currentPlanet.unrestStat,
+        "credits": gameState["credits"],
     }
 
 

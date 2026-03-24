@@ -149,6 +149,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setState((s) => ({
       ...s,
       resources: data.resources ?? s.resources,
+      credits: data.credits ?? s.credits,
       economy: avgStat(planets, "economy"),
       military: avgStat(planets, "military"),
       civilUnrest: avgStat(planets, "unrest"),
@@ -186,6 +187,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setState((s) => ({
         ...s,
         turn: data.turn,
+        credits: 100,
         economy: avgStat(planets, "economy"),
         military: avgStat(planets, "military"),
         civilUnrest: avgStat(planets, "unrest"),
