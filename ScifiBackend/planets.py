@@ -30,7 +30,7 @@ def _load_from_db():
     for db_id, name, description, resource_name in rows:
         resource = _RESOURCE_NAME_MAP.get(resource_name, "ration")
         leader = leaderMap.get(name, Leader("Unknown Governor", "No leader assigned.", 2))
-        planet = Planet(name, description or "description", resource, 100, 100, 100, leader)
+        planet = Planet(name, description or "description", resource, 50, 50, 25, leader)
         planet.db_id = db_id
         planets.append(planet)
 
