@@ -53,7 +53,7 @@ def start_game():
         cur.execute(
             """INSERT INTO game_session
                (current_turn, credits, economy_health, military_power, civil_unrest, stability)
-               VALUES (1, 100, 100, 100, 0, 100)
+               VALUES (1, 50, 50, 25, 0, 100)
                RETURNING id""",
         )
         current_session_id = cur.fetchone()[0]
