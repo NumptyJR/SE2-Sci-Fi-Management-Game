@@ -1,24 +1,40 @@
-from builders import Planet
-from leaders import leaderList
+from builders import Planet, Leader
+from leaders import leaderMap
+from db import get_connection
 
-planetList = []
+_RESOURCE_NAME_MAP = {
+    "Rations": "ration",
+    "Minerals": "mineral",
+    "Fuel": "fuel",
+    "Manufactured Goods": "manufacture",
+    "Medical Supplies": "medical",
+}
 
-#Planet Descriptions
-folDescription = "Once a barren terrestrial planet on the inner system ring, terraforming efforts over the last four centuries have transformed its desert expenses into lush, nutrient dense soil. Green spheres populate the planet’s surface creating mini control climates for the production of food and collection of water through deep, underground ice veins. A small population of working residents maintain production and planet-to-planet supply chains to ensure rations are distributed throughout the planets."
 
-#Planet Template (Name, Description, Resource, EcomStat, MilitaryStat, UnrestStat, Leader)
-planet1 = Planet("Fol", folDescription, "ration", 100, 100, 100, leaderList[0])
-planetList.append(planet1)
-#Append to main list after initialization
+def _load_from_db():
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT pt.id, pt.name, pt.description, rt.name AS resource_name
+            FROM planet_template pt
+            LEFT JOIN resource_type rt ON pt.primary_output_resource_id = rt.id
+            ORDER BY pt.id
+        """)
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
 
-planet2 = Planet("KHM-4", "description", "mineral", 100, 100, 100, leaderList[1])
-planetList.append(planet2)
+    planets = []
+    for db_id, name, description, resource_name in rows:
+        resource = _RESOURCE_NAME_MAP.get(resource_name, "ration")
+        leader = leaderMap.get(name, Leader("Unknown Governor", "No leader assigned.", 2))
+        planet = Planet(name, description or "description", resource, 100, 100, 100, leader)
+        planet.db_id = db_id
+        planets.append(planet)
 
-planet3 = Planet("Pyrathis", "description", "fuel", 100, 100, 100, leaderList[0])
-planetList.append(planet3)
+    return planets
 
-planet4 = Planet("Nalathis","description","manufacture", 100, 100, 100, leaderList[1])
-planetList.append(planet4)
 
-planet5 = Planet("Pharis", "description", "medical", 100, 100, 100, leaderList[0])
-planetList.append(planet5)
+planetList = _load_from_db()

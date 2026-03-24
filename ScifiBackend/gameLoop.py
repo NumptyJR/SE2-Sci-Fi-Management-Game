@@ -4,6 +4,7 @@ from planets import planetList
 from memento import GameMemento, caretaker
 from command import ApplyChoiceCommand, CommandHistory
 from observer import AlertObserver, StatChangeLogObserver
+from db import get_connection
 
 # Command pattern: shared history of all player decisions
 command_history = CommandHistory()
@@ -12,8 +13,6 @@ command_history = CommandHistory()
 alert_observer = AlertObserver()
 stat_log_observer = StatChangeLogObserver()
 
-# Maps planet resource types to the canonical resource keys used throughout
-# the app. Both backend gameState and frontend GameContext use these keys.
 RESOURCE_MAP = {
     "ration": "rations",
     "mineral": "minerals",
@@ -36,14 +35,34 @@ gameState = {
 
 currentEvent = None
 currentPlanet = None
+current_session_id = None
 
 
 def start_game():
+    global current_session_id
     # Observer pattern: attach observers to every planet once at game start
     for planet in planetList:
         planet.attach(alert_observer)
         planet.attach(stat_log_observer)
     gameState["turn"] = 1
+
+    # Persist a new game session to the database
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO game_session
+               (current_turn, credits, economy_health, military_power, civil_unrest, stability)
+               VALUES (1, 100, 100, 100, 0, 100)
+               RETURNING id""",
+        )
+        current_session_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[DB] Could not create game session: {e}")
+
     return gameState
 
 
@@ -114,10 +133,6 @@ def apply_choice(choice_id):
         choice = currentEvent.c2
     else:
         choice = currentEvent.c3
-
-    # Deduct resource cost from every resource pool.
-    # resourceCost is stored as a negative integer (e.g. -5 means "costs 5").
-    # We floor at 0 so a single expensive choice can't send resources negative.
     if choice.resourceCost != 0:
         for key in gameState["resources"]:
             gameState["resources"][key] = max(
@@ -127,6 +142,9 @@ def apply_choice(choice_id):
     # Command pattern: wrap the action so it can be undone and inspected
     cmd = ApplyChoiceCommand(currentPlanet, choice, currentEvent.name)
     command_history.execute(cmd)
+
+    # Persist this decision to the database
+    _log_turn_history(choice)
 
     return {
         "planet": currentPlanet.name,
@@ -176,10 +194,81 @@ def clear_alerts():
     alert_observer.clear_alerts()
 
 
+def _update_session_in_db():
+    """Sync the current aggregate planet stats into game_session."""
+    if current_session_id is None:
+        return
+    count = len(planetList)
+    avg_ecom = round(sum(p.ecomStat for p in planetList) / count)
+    avg_mil = round(sum(p.militaryStat for p in planetList) / count)
+    avg_unrest = round(sum(p.unrestStat for p in planetList) / count)
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """UPDATE game_session
+               SET current_turn = %s,
+                   economy_health = %s,
+                   military_power = %s,
+                   civil_unrest   = %s,
+                   updated_at     = CURRENT_TIMESTAMP
+               WHERE id = %s""",
+            (gameState["turn"], avg_ecom, avg_mil, avg_unrest, current_session_id),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[DB] Could not update game session: {e}")
+
+
+def _log_turn_history(choice):
+    """Insert a turn history row for the current player decision."""
+    if current_session_id is None:
+        return
+    event_id = getattr(currentEvent, "db_id", None)
+    option_id = getattr(choice, "db_id", None)
+    count = len(planetList)
+    avg_ecom = round(sum(p.ecomStat for p in planetList) / count)
+    avg_mil = round(sum(p.militaryStat for p in planetList) / count)
+    avg_unrest = round(sum(p.unrestStat for p in planetList) / count)
+    total_resources = sum(gameState["resources"].values())
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO game_turn_history
+               (game_session_id, turn_number,
+                event_template_id, selected_option_id,
+                credits_change, economy_change, military_change, unrest_change,
+                snapshot_credits, snapshot_economy, snapshot_military, snapshot_civil_unrest)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                current_session_id,
+                gameState["turn"],
+                event_id,
+                option_id,
+                choice.resourceCost,
+                choice.ecomEffect,
+                choice.militaryEffect,
+                choice.unrestEffect,
+                total_resources,
+                avg_ecom,
+                avg_mil,
+                avg_unrest,
+            ),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[DB] Could not log turn history: {e}")
+
+
 def advance_turn():
-    # Single source of truth for turn increment — server.py syncs from here
     gameState["turn"] += 1
     collect_resources()
+    _update_session_in_db()
 
 
 # Memento pattern: Originator methods
@@ -208,10 +297,6 @@ def save_game(save_name: str) -> dict:
 
 
 def load_game(save_id: str) -> dict:
-    """
-    Originator: ask the Caretaker for a memento and restore state from it.
-    Returns the restored turn number so server.py can sync its own counter.
-    """
     memento = caretaker.restore(save_id)
     restored = memento.get_state()
 
