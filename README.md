@@ -17,7 +17,7 @@ Next, navigate to the backend and install requirements.txt, and activate a virtu
 
 Then, while still in the backend, run the server.py file:
 
-    python server.py
+    python3 server.py
 
 This starts up the game's backend. Now, navigate to the frontend, and run the command,
 
