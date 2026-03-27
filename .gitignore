@@ -31,3 +31,4 @@ env/
 *.o
 .coverage
 UML_Diagrams.md
+Def_not_a_password.txt
